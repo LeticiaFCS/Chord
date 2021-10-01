@@ -1,64 +1,57 @@
 from sys import stdin
 from select import select
-
+import threading
 import socket
+import sys
+
+HOST = '' # maquina onde esta o servidor
+
+if(len(sys.argv) <= 3):
+	print("./no.py porta chave total_de_nos")
+	exit()
+
+PORT = int(sys.argv[1])
+key = int(sys.argv[2])
+N = int(sys.argv[3])
+
+active = True
+value = -1
+ids = []
+
+sock = socket.socket()
+sock.bind((HOST, PORT))
+sock.listen(5)
+sock.setblocking(False)
+
+def parse(msg):
+	global active
+	# ping
+	if msg[0] == b'\x02' and active:
+		# pong
+		return b'\x03'
+	elif msg[0] == b'\x19':
+		active = not active
+		return b'\x20' if active else b'\x21'
+	else:
+		return None
 
 
-	
-HOST = 'localhost' # maquina onde esta o servidor
-PORTA = 5003 # porta que o servidor esta escutando
+def no_connection(cnnSocket, id):
+	while True:
+		msg = cnnSocket.recv(1024) 
+        # se o cliente desconectou
+		if not msg: break
+		d = parse(msg)
+		if d != None:
+			cnnSocket.send(d)
 
-
-class no:
-	
-	def __init__(self, x, N):
-		self.value = -1
-		self.key = x % N
-		self.port = 5010 + aself.key
-		
-	
-
-"""
-# cria socket
-sock = socket.socket() 
-# conecta-se com o servidor
-sock.connect((HOST, PORTA)) 
-
-inputList = [stdin, sock]
-
-msg_type()
-
+	cnnSocket.close()
 
 while True:
-	#select em espera para sock ou entrada padrão
-	rlist, wlist, xlist = select(inputList, [], [])
-	for newInput in rlist:
-		if newInput == sock:
-			#espera a resposta do servidor
-			returned_msg = sock.recv(1024)			
-			decode_ret( str(returned_msg,  encoding='utf-8') )
-		elif newInput == stdin:
-			line = stdin.readline()
-			cmd = line[:-1]
-			if(cmd != "sair"):
-				if(cmd.startswith("historico ")):
-					_, id = cmd.split(' ')
-					print_history(id)
-				else:
-					try:
-						msg = encode_input(cmd)		
-						# envia uma mensagem para o servidor
-						sock.sendall(bytes(msg, "utf8"))
-						
-						
-						
-						
-					except Exception as e:
-						print(e)
-			else:
-				sock.close()
-				exit()
-		#msg_type()	
-		
-"""
+	newSock, _ = sock.accept()
+	client = threading.Thread(target = no_connection, args=(newSock, len(ids)))
+	ids.append(client)
+	client.start()
 
+for c in ids:
+	c.join()
