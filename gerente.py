@@ -7,8 +7,9 @@ import threading
 
 HOST = ''
 HOST_NO = 'localhost'
-PORTA = 5003 # porta que a aplicacao esta usando
-PORT_NO_PREF = 5010
+PORTA = 5006 # porta que a aplicacao esta usando
+PORT_NO_PREF = 5035
+SLEEP_SOCKET_DELTA = 0.2
 
 # cria um socket para comunicacao
 sock = socket.socket() 
@@ -20,6 +21,7 @@ sock.listen(5)
 sock.setblocking(False)
 
 inputList = [sys.stdin, sock]
+ids = []
 
 N = 5
 if(len(sys.argv) > 1):
@@ -30,73 +32,117 @@ chord = []
 def init():
 	for i in range(N):
 		no_port = PORT_NO_PREF + i
-		proc = subprocess.Popen(['python no.py ' + str(no_port) + ' ' + str(i) + ' ' + str(N)], shell=True)
-		sock = socket.socket()
-		time.sleep(2)
-		print("CONECTANDO AO NO", i, no_port)
-		sock.connect((HOST_NO, no_port))
-		print("CONECTADO AO NO", i, no_port)
-		chord.append((proc, sock, no_port))
+		args = 'python no.py ' + str(no_port) + ' ' + str(i) + ' ' + str(N)
+		proc = subprocess.Popen([args], shell=True)
+		sock_cnn = socket.socket()
+		sock_cnn.settimeout(1)
+		time.sleep(SLEEP_SOCKET_DELTA)
+		sock_cnn.connect((HOST_NO, no_port))
+		chord.append((proc, sock_cnn, no_port))
+	print("Chord criado!")
+
+def getActive():
+	for proc in chord:
+		sock_cnn = proc[1]
+		sock_cnn.send(b'\x02')
+		try:
+			resp = sock_cnn.recv(4)
+			if resp and resp == b'\x03':
+				return proc[2]
+		except:
+			pass
+	return -1
 
 def listActive():
 	lst = []
+	for proc in chord:
+		sock_cnn = proc[1]
+		sock_cnn.send(b'\x02')
+		try:
+			resp = sock_cnn.recv(4)
+			if resp and resp == b'\x03':
+				lst.append(proc[2])
+		except:
+			pass
+	print(lst) #DEBUG
 	return lst
+
+def change_state(id):
+	proc = chord[id]
+	sock_cnn = proc[1]
+	sock_cnn.send(b'\x19')
+	resp = sock_cnn.recv(4)
+	if resp and resp == b'\x20':
+		print("O no", proc[2], "esta ativo")
+	else:
+		print("O no", proc[2], "esta inativo")
+
 
 def closeAll():
 	for proc in chord:
 		proc[0].terminate()
 
+def parse(msg):
+	if msg == b'\x01':
+		no_port = getActive()
+		if no_port > 0:
+			return b'\x01' + str(no_port).encode()
+		else:
+			return b'\x02'
+
+def new_connection(cnnSocket, id):
+	while True:
+		msg = cnnSocket.recv(1024)
+        # se o cliente desconectou
+		if not msg: break
+		d = parse(msg)
+		if d:
+			cnnSocket.send(d)
+
+	cnnSocket.close()
+
 def main():
 	init()
-	closeAll()
-	# while True:
-	# 	#select em espera para sock ou entrada padrão
-	# 	rlist, wlist, xlist = select.select(inputList, [], [])
+	while True:
+		#select em espera para sock ou entrada padrão
+		rlist, _, _ = select.select(inputList, [], [])
 
-	# 	for newInput in rlist:
-	# 		if newInput == sock:
-	# 			# aceita a primeira conexao da fila
-	# 			"""newSock, endereco = sock.accept() # retorna um novo socket e o endereco do par conectado
-	# 			# aceita nova conexão criando nova thread
-	# 			client = threading.Thread(target = new_connection, args=(newSock, len(ids)))
-				
-	# 			ids.append(client)
-	# 			sockets.append(newSock)
-	# 			clientsActive[len(ids) - 1] = True
-	# 			client.start()
-	# 			"""
-	# 		elif newInput == sys.stdin:
-	# 			#le comando digitado pelo usuário na entrada padrão
-	# 			cmd = input()
-	# 			if(cmd == 'sair'):
-	# 				#espera todas as threads ativas terminarem
-	# 				"""for client in ids:
-	# 					client.join()
-	# 				exited = True
-	# 				sender.join()
-	# 				# fecha o socket principal
-	# 				"""
-	# 				print("sair")
-	# 				sock.close() 
-	# 				sys.exit()
-	# 			elif(cmd == "listar"):
-	# 				print("listar")
-	# 			else:
-	# 				try:
-	# 					comando, id = cmd.split(' ')
-	# 					id = int(id)
-	# 					if(id < 0 or id >= N):
-	# 						raise Exception("")
+		for newInput in rlist:
+			if newInput == sock:
+				# aceita a primeira conexao da fila
+				newSock, _ = sock.accept() # retorna um novo socket e o endereco do par conectado
+				# aceita nova conexão criando nova thread
+				client = threading.Thread(target = new_connection, args=(newSock, len(ids)))
+				ids.append(client)
+				client.start()
+			elif newInput == sys.stdin:
+				#le comando digitado pelo usuário na entrada padrão
+				cmd = input()
+				if(cmd == 'sair'):
+					#espera todas as threads ativas terminarem
+					for client in ids:
+						client.join()
+					# fecha o socket principal
+					closeAll()
+					sock.close() 
+					sys.exit()
+				elif(cmd == "listar"):
+					listActive()
+				else:
+					try:
+						comando, id = cmd.split(' ')
+						id = int(id)
+						if(id < 0 or id >= N):
+							raise Exception("")
 						
-	# 					if(comando == "ativar"):
-	# 						print("ativar "+str(id))
-	# 					elif(comando == "desativar"):
-	# 						print("desativar "+str(id))
+						if(comando == "mudar"):
+							change_state(id)
 						
-	# 					else:
-	# 						print("comando invalido")
-	# 				except Exception:
-	# 					print("comando invalido")
+						else:
+							print("comando invalido")
+					except Exception:
+						print("comando invalido")
+	
 					
 main()
 
