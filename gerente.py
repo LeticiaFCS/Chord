@@ -23,7 +23,7 @@ sock = socket.socket()
 # vincula a interface e porta para comunicacao
 sock.bind((HOST, PORTA))
 # define o limite maximo de conexoes pendentes e coloca-se em modo de espera por conexao
-sock.listen(5) 
+sock.listen(20) 
 #torna o socket não bloqueante
 sock.setblocking(False)
 
@@ -36,34 +36,43 @@ if(len(sys.argv) > 1):
 
 chord = []
 
+
+def query(no_port):
+	no_socket = socket.socket()
+	no_socket.connect((HOST, no_port))
+	return no_socket
+
 def init():
 	for i in range(N):
 		no_port = PORT_NO_PREF + i
 		args = 'python3 no.py ' + str(no_port) + ' ' + str(i) + ' ' + str(N)
 		proc = subprocess.Popen([args], shell=True)
-		sock_cnn = socket.socket()
-		time.sleep(SLEEP_SOCKET_DELTA)
-		sock_cnn.connect((HOST_NO, no_port))
-		chord.append((proc, sock_cnn, no_port))
-	change_state(0)
+		chord.append((proc, None, no_port))
 	print("Chord criado!")
+	
+	time.sleep(SLEEP_SOCKET_DELTA)
+	change_state(0)
+	print("Chord inicializado!")
 
 def getActive():
 	for proc in chord:
-		sock_cnn = proc[1]
+		sock_cnn = query(proc[2])
 		sock_cnn.send(b'\x02')
 		resp = sock_cnn.recv(4)
+		sock_cnn.close()
 		if resp and resp == b'\x03':
 			return proc[2]
+			
 		
 	return -1
 
 def listActive():
 	lst = []
 	for proc in chord:
-		sock_cnn = proc[1]
+		sock_cnn = query(proc[2])
 		sock_cnn.send(b'\x02')
 		resp = sock_cnn.recv(4)
+		sock_cnn.close()
 		if resp and resp == b'\x03':
 			lst.append(proc[2])
 		
@@ -72,13 +81,9 @@ def listActive():
 
 def change_state(id):
 	proc = chord[id]
-	sock_cnn = proc[1]
+	sock_cnn = query(proc[2])
 	sock_cnn.send(b'\x19')
-	resp = sock_cnn.recv(4)
-	if resp and resp == b'\x20':
-		print("O no", proc[2], "esta ativo")
-	else:
-		print("O no", proc[2], "esta inativo")
+	sock_cnn.close()
 
 
 def closeAll():
@@ -89,11 +94,12 @@ def parse(msg):
 	if msg == b'\x01':
 		no_port = getActive()
 		if no_port > 0:
-			return b'\x01' + str(no_port).encode()
+			return b'\x61' + str(no_port).encode()
 		else:
-			return b'\x02'
+			return b'\x62'
 
 def new_connection(cnnSocket, id):
+	print("new connection")
 	while True:
 		msg = cnnSocket.recv(1024)
         # se o cliente desconectou
@@ -105,7 +111,9 @@ def new_connection(cnnSocket, id):
 	cnnSocket.close()
 
 def main():
-	init()
+	initThread = threading.Thread(target = init, args=())
+	initThread.start()
+	
 	while True:
 		#select em espera para sock ou entrada padrão
 		rlist, _, _ = select.select(inputList, [], [])
@@ -114,6 +122,7 @@ def main():
 			if newInput == sock:
 				# aceita a primeira conexao da fila
 				newSock, _ = sock.accept() # retorna um novo socket e o endereco do par conectado
+				print("AQUI")
 				# aceita nova conexão criando nova thread
 				client = threading.Thread(target = new_connection, args=(newSock, len(ids)))
 				ids.append(client)
@@ -125,6 +134,7 @@ def main():
 					#espera todas as threads ativas terminarem
 					for client in ids:
 						client.join()
+					initThread.join()
 					# fecha o socket principal
 					closeAll()
 					sock.close() 

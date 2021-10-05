@@ -23,7 +23,7 @@ sockGerente.connect((HOST_GERENTE, PORTA_GERENTE))
 inputList = [stdin, sockGerente]
 
 def parse(msg):
-	if msg[0] == 0x1:
+	if msg[0] == 0x61:
 		return msg[1:]
 	elif msg[0] == 0x14:
 		return msg[1:]
