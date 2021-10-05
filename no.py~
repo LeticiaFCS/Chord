@@ -35,7 +35,7 @@ sock.setblocking(False)
 def parse(msg):
 	global active
 	# ping
-	if msg == b'\x02':
+	if msg == b'\x02' and active:
 		# pong
 		# ativo
 		if(active):

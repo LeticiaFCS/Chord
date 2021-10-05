@@ -13,7 +13,7 @@ env = dotenv(".env")
 
 HOST_NO = 'localhost'
 HOST_GERENTE = 'localhost' # maquina onde esta o servidor
-PORTA_GERENTE = int(env['PORTA_GERENTE']) # porta que o servidor esta escutando
+PORTA_GERENTE = 5006 # porta que o servidor esta escutando
 
 # cria socket
 sockGerente = socket.socket()
