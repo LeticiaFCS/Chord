@@ -189,16 +189,16 @@ def departure():
 	if(pred != None):
 		pred_no = socket.socket()
 		pred_no.connect((HOST, pred))
-		pred_no.send( b'\0x65'+str(suc).encode())
+		pred_no.send( b'\x65'+str(suc).encode())
 		print("\tdepature pred ",pred)
 		pred_no.close()
 	if(suc != PORT):
 		suc_no = socket.socket()
 		suc_no.connect((HOST, suc))
 		if(pred == None):
-			suc_no.send( b'\0x66'+"-1".encode())
+			suc_no.send( b'\x66'+"-1".encode())
 		else:
-			suc_no.send( b'\0x66'+str(pred).encode())
+			suc_no.send( b'\x66'+str(pred).encode())
 		print("\tdepature suc")
 		suc_no.close()
 	

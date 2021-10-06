@@ -199,7 +199,7 @@ def departure():
 			suc_no.send( b'\0x66'+"-1".encode())
 		else:
 			suc_no.send( b'\0x66'+str(pred).encode())
-		print("\depature suc")
+		print("\tdepature suc")
 		suc_no.close()
 	
 		

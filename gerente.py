@@ -27,6 +27,8 @@ sock.listen(20)
 #torna o socket não bloqueante
 sock.setblocking(False)
 
+
+
 inputList = [sys.stdin, sock]
 ids = []
 

@@ -27,6 +27,8 @@ sock.listen(20)
 #torna o socket não bloqueante
 sock.setblocking(False)
 
+lock = threading.Lock()
+
 inputList = [sys.stdin, sock]
 ids = []
 
@@ -55,7 +57,6 @@ def init():
 	print("Chord inicializado!")
 
 def getActive():
-	id = 0
 	for proc in chord:
 		sock_cnn = query(proc[2])
 		sock_cnn.send(b'\x02')
@@ -64,8 +65,6 @@ def getActive():
 		if resp and resp == b'\x03':
 			return proc[2]
 			
-		id += 1
-		print(id)
 		
 	return -1
 
