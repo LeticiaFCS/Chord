@@ -33,13 +33,14 @@ ids = []
 pred = None
 suc = PORT
 
-STABILIZE_DELTA = 5
+STABILIZE_DELTA = 1
 
 sock = socket.socket()
 sock.bind((HOST, PORT))
 sock.listen(20)
 sock.setblocking(False)
 
+lock = threading.Lock()
 
 def getActive():
 	sockGerente = socket.socket()
@@ -93,7 +94,7 @@ def find_sucessor(other_key):
 		return suc_key
 	else:	
 		suc_node = socket.socket()
-		print(key, " SUCESSOR ", suc)
+		#print(key, " SUCESSOR ", suc)
 		suc_node.connect((HOST, suc))
 		suc_node.send(b'\x05'+str(other_key).encode())
 		msg = suc_node.recv(10)
@@ -112,20 +113,21 @@ def join():
 		msg = other.recv(10)
 		other.close()
 		suc = PORTA_NOS + int(parse(msg))
-	print(PORT," joined suc = ", suc)
+	print(key," joined suc = ", suc-PORTA_NOS)
 	#stabilize()
 	
 	
 
 def notify(other_key):
-	print(PORT, " recebeu notify de ", other_key)
 	global pred
 	if(pred == None or inOpen(other_key, pred - PORTA_NOS, key)):
 		pred = PORTA_NOS + other_key
 
 def stabilize():
-	print(PORT-PORTA_NOS, " chamou stabilize ")
 	global suc
+	#print(PORT-PORTA_NOS, " chamou stabilize ")
+	#print("\tSTABILIZE ", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
+	
 	if(suc == PORT):
 		if(pred == None):
 			x = -1
@@ -170,27 +172,28 @@ def check_predecessor():
 def fix_sucessor():
 	global suc
 	id = find_sucessor(key)
-	print(key, " fix sucessor = ", id)
+	#print(key, " fix sucessor = ", id)
 	suc = id + PORTA_NOS
 	
 	
 def periodically():
-	while(True):		
-		if(active):
-			print("="*20)
-			time.sleep(STABILIZE_DELTA)
-			print("="*20)
-			stabilize()
-			check_predecessor()
-			#fix_sucessor()		
+	while(True):	
+		time.sleep(STABILIZE_DELTA)			
+		with lock:
+			if(active):
+				stabilize()
+		with lock:
+			if(active):
+				check_predecessor()
+		#fix_sucessor()		
 
 def departure():
-	print("\tdepature")
+	#print("\tdepature")
 	if(pred != None):
 		pred_no = socket.socket()
 		pred_no.connect((HOST, pred))
 		pred_no.send( b'\x65'+str(suc).encode())
-		print("\tdepature pred ",pred)
+	#	print("\tdepature pred ",pred)
 		pred_no.close()
 	if(suc != PORT):
 		suc_no = socket.socket()
@@ -199,7 +202,7 @@ def departure():
 			suc_no.send( b'\x66'+"-1".encode())
 		else:
 			suc_no.send( b'\x66'+str(pred).encode())
-		print("\tdepature suc")
+	#	print("\tdepature suc")
 		suc_no.close()
 	
 		
@@ -234,7 +237,8 @@ def parse(msg):
 	#notify
 	elif msg[0] == 0x04:
 		id = int(msg[1:].decode())
-		notify(id)
+		with lock:
+			notify(id)
 		return None				
 	#pedido de predecessor
 	elif msg[0] == 0x63:
@@ -253,28 +257,34 @@ def parse(msg):
 	# mudar (estado)
 	elif msg == b'\x19':
 		if(active):
-			departure()
+			with lock:
+				departure()
+				active = False
 		else:
-			join()	
-		active = not active
+			with lock:
+				join()	
+				active = True
 		#return b'\x20' if active else b'\x21'
 	#sucessor saiu
 	elif msg[0] == 0x65:
 		new_suc = int(msg[1:].decode())
-		print("\t", key, "new suc: ", new_suc)
-		if(suc != new_suc):
-			suc = new_suc
-		else:
-			suc = PORT
+		with lock:
+			print("\t", key, "new suc: ", new_suc)
+			if(suc != new_suc):
+				suc = new_suc
+			else:
+				suc = PORT
+			print("\t\t", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
 	#predecessor saiu
 	elif msg[0] == 0x66:
 		new_pred = int(msg[1:].decode())
-		print("\t", key, "new pred: ", new_pred)
-		if(new_pred != -1):
-			pred = new_pred
-		else:
-			pred = None
-	
+		with lock:
+			print("\t", key, "new pred: ", new_pred)
+			if(new_pred != -1):
+				pred = new_pred
+			else:
+				pred = None
+			print("\t\t", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
 	return None
 
 
@@ -290,14 +300,17 @@ def no_connection(cnnSocket, id, end):
 
 	cnnSocket.close()
 
-def debug():
+def debugFunc():
 	while(True):
 		if(active):
-			time.sleep(5)
+			time.sleep(1)
 			print("\t", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
 
 stabilizeTread = threading.Thread(target = periodically, args=())
 stabilizeTread.start()
+
+debugTread = threading.Thread(target = debugFunc, args=())
+debugTread.start()
 
 while True:
 	rlist, wlist, xlist = select([sock], [], [])
