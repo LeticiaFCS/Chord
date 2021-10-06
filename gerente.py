@@ -93,15 +93,18 @@ def closeAll():
 		proc[0].terminate()
 
 def parse(msg):
+	#cliente solicita um no ativo
 	if msg == b'\x01':
 		no_port = getActive()
+		#envia porta de um no ativo
 		if no_port > 0:
 			return b'\x61' + str(no_port).encode()
+		#nao ha nos ativos
 		else:
 			return b'\x62'
 
 def new_connection(cnnSocket, id):
-	print("new connection")
+	#print("new connection")
 	while True:
 		msg = cnnSocket.recv(1024)
         # se o cliente desconectou

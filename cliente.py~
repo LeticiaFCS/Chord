@@ -23,10 +23,15 @@ sockGerente.connect((HOST_GERENTE, PORTA_GERENTE))
 inputList = [stdin, sockGerente]
 
 def parse(msg):
+	#recebeu porta de um no ativo
 	if msg[0] == 0x61:
 		return msg[1:]
+	#recebeu valor do no
 	elif msg[0] == 0x14:
 		return msg[1:]
+	#mudou valor do no com sucesso
+	elif msg[0] == 0x17:
+		return True
 	return None
 
 def getActive():
@@ -45,7 +50,24 @@ def solicitar(chave, port):
 	print("Cliente recebeu", msg, "do no", port)
 	d = parse(msg)
 	if d:
-		print(int(d.decode()))
+		print("o valor do no de chave ", chave," e ", int(d.decode()))
+	else:
+		print("O no de chave ", chave," esta inativo")
+	sock_no.close()
+	
+def mudar_valor(chave, valor, port):
+	sock_no = socket.socket()
+	sock_no.connect((HOST_NO, port))
+	sock_no.send(b'\x15' + chave.encode() + b'\x16' + valor.encode())
+	msg = sock_no.recv(1024)
+	print("Cliente recebeu", msg, "do no", port)
+	
+	
+	d = parse(msg)
+	if d:
+		print("o valor do no de chave ", chave," foi mudado para ", valor)
+	else:
+		print("o valor do no de chave ", chave," nao foi mudado")
 	sock_no.close()
 
 while True:
@@ -59,7 +81,7 @@ while True:
 		elif newInput == stdin:
 			line = stdin.readline()
 			cmd = line[:-1]
-			args = cmd.split(" ")
+			args = cmd.split(" ", 2)
 			if len(args) == 1 and args[0] == "sair":
 				sockGerente.close()
 				exit()
@@ -68,3 +90,8 @@ while True:
 				port = getActive()
 				if port != -1:
 					solicitar(chave, port)
+			elif len(args) == 3 and args[0] == "mudar":
+				command, chave, valor = args
+				port = getActive()
+				if port != -1:
+					mudar_valor(chave, valor, port)

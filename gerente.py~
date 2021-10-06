@@ -27,7 +27,7 @@ sock.listen(20)
 #torna o socket não bloqueante
 sock.setblocking(False)
 
-lock = threading.Lock()
+
 
 inputList = [sys.stdin, sock]
 ids = []
@@ -101,7 +101,7 @@ def parse(msg):
 			return b'\x62'
 
 def new_connection(cnnSocket, id):
-	print("new connection")
+	#print("new connection")
 	while True:
 		msg = cnnSocket.recv(1024)
         # se o cliente desconectou

@@ -204,10 +204,44 @@ def departure():
 			suc_no.send( b'\x66'+str(pred).encode())
 	#	print("\tdepature suc")
 		suc_no.close()
+	print(key," departed ")
 	
+def get_id(other):
+	if(other == PORT):
+		return key
+	else:
+		 other_node = socket.socket()
+		 other_node.connect((HOST, other))
+		 other_node.send(b'\x07')
+		 msg = other_node.recv(10)
+		 other_node.close()
+		 other_id = int(parse(msg))
+		 return other_id
+
+def get_value(other):
+	if(other == PORT):
+		return value
+	else:
+		 other_node = socket.socket()
+		 other_node.connect((HOST, other))
+		 other_node.send(b'\x09')
+		 msg = other_node.recv(10)
+		 other_node.close()
+		 other_value = parse(msg)
+		 return other_value
+def set_value(other, x):
+	global value
+	if(other == PORT):
+		with lock:
+			value = x
+	else:
+		 other_node = socket.socket()
+		 other_node.connect((HOST, other))
+		 other_node.send(b'\x11'+x.encode())
+		 other_node.close()
 		
 def parse(msg):
-	global active, pred, suc
+	global active, pred, suc, value
 	# ping
 	if msg == b'\x02':
 		# pong
@@ -225,15 +259,33 @@ def parse(msg):
 		return msg		
 	elif msg[0] == 0x61:
 		return msg[1:]	
-	# solicitar
+	
+	# no solicita sucessor
 	elif msg[0] == 0x05:
 		id = int(msg[1:].decode())
 		sucessor = find_sucessor(id)
+		
 		return (b'\x06' + str(sucessor).encode())
 	#retorna porta do nó sucessor
 	elif msg[0] == 0x06:
 		return msg[1:].decode()
-	
+	#no solicitou id
+	elif msg[0] == 0x07:
+		return (b'\x08'+str(key).encode())
+	#no enviou id
+	elif msg[0] == 0x08:
+		return msg[1:].decode()
+	#no solicitou valor
+	elif msg[0] == 0x09:
+		return (b'\x10'+str(value).encode())
+	#no enviou valor
+	elif msg[0] == 0x10:
+		return msg[1:].decode()
+	#mudar valor do no
+	elif msg[0] == 0x11:
+		with lock:
+			value = msg[1:].decode()
+		print("MUDAMOS O VALOR DE ", key, " PARA ", msg[1:].decode())
 	#notify
 	elif msg[0] == 0x04:
 		id = int(msg[1:].decode())
@@ -249,11 +301,30 @@ def parse(msg):
 	#recebeu predecessor
 	elif msg[0] == 0x64:
 		return msg[1:].decode()
-		
+	
+	#cliente solicita valor	
 	elif msg[0] == 0x12:
 		chave = int.from_bytes(msg[1:], 'big')%N
-		print("Recebido chave de busca", str(chave))
-		return b'\x14' + str(chave).encode()
+		chave_sucessor = find_sucessor(chave)
+		porta = PORTA_NOS + chave_sucessor
+		print("chave de busca ",chave," sucessor ", chave_sucessor)
+		if(get_id(porta) == chave):
+			return b'\x14' + str(get_value(porta)).encode()
+		else:
+			return b'\x13'
+	#cliente muda valor	
+	elif msg[0] == 0x15:
+		chave, novo_valor = msg[1:].split(b'\x16')
+		chave = int.from_bytes(chave, 'big')%N
+		novo_valor = novo_valor.decode()
+		chave_sucessor = find_sucessor(chave)
+		porta = PORTA_NOS + chave_sucessor
+		print("chave de busca ",chave," sucessor ", chave_sucessor)
+		if(get_id(porta) == chave):
+			set_value(porta, novo_valor)
+			return b'\x17'
+		else:
+			return b'\x18'
 	# mudar (estado)
 	elif msg == b'\x19':
 		if(active):
@@ -309,8 +380,8 @@ def debugFunc():
 stabilizeTread = threading.Thread(target = periodically, args=())
 stabilizeTread.start()
 
-debugTread = threading.Thread(target = debugFunc, args=())
-debugTread.start()
+#debugTread = threading.Thread(target = debugFunc, args=())
+#debugTread.start()
 
 while True:
 	rlist, wlist, xlist = select([sock], [], [])
