@@ -33,7 +33,7 @@ ids = []
 pred = None
 suc = PORT
 
-STABILIZE_DELTA = 5
+STABILIZE_DELTA = 1
 
 sock = socket.socket()
 sock.bind((HOST, PORT))
@@ -150,7 +150,7 @@ def stabilize():
 		suc_node.send(b'\x04'+str(key).encode())
 		suc_node.close()
 	
-	print(PORT-PORTA_NOS," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
+	
 		
 def check_predecessor():
 	global pred
@@ -290,10 +290,17 @@ def no_connection(cnnSocket, id, end):
 
 	cnnSocket.close()
 
-
+def debug():
+	while(True):
+		if(active):
+			time.sleep(5)
+			print("\t", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
 
 stabilizeTread = threading.Thread(target = periodically, args=())
 stabilizeTread.start()
+
+debugTread = threading.Thread(target = debug, args=())
+debugTread.start()
 
 while True:
 	rlist, wlist, xlist = select([sock], [], [])
