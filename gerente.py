@@ -35,9 +35,11 @@ ids = []
 N = 8
 if(len(sys.argv) > 1):
 	N = int(sys.argv[1])
-
-#o número de nó é a maior potencia de 2 que é pelo menos N
-N = 1 << N.bit_length()
+#ao menos um nó na rede
+if(N == 0):
+	N = 1
+#o número de nós é a menor potencia de 2 que é pelo menos N
+N = 1 << (N.bit_length() - 1)
 
 chord = []
 

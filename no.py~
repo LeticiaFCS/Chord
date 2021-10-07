@@ -20,7 +20,7 @@ PORTA_GERENTE = int(env['PORTA_GERENTE'])
 PORTA_NOS = int(env['PORTA_NOS'])
 
 if(len(sys.argv) <= 3):
-	print("./no.py porta chave total_de_nos")
+	print("./no.py porta chave total_de_nos ")
 	exit()
 
 PORT = int(sys.argv[1])
@@ -208,7 +208,7 @@ def periodically():
 		with lock:
 			if(active and show == 0):
 				showTable()
-		show = (show + 1) % 35
+		show = (show + 1) % 50
 
 def departure():
 
