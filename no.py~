@@ -5,7 +5,7 @@ import socket
 import sys
 import hashlib
 import time
-
+import math
 
 def dotenv(path: str) -> dict:
     with open(path, 'r') as f:
@@ -26,7 +26,8 @@ if(len(sys.argv) <= 3):
 PORT = int(sys.argv[1])
 key = int(sys.argv[2])
 N = int(sys.argv[3])
-
+M = math.ceil( math.log(N, 2) )
+finger = [-1] * M
 active = False
 value = -1
 ids = []
@@ -41,6 +42,11 @@ sock.listen(20)
 sock.setblocking(False)
 
 lock = threading.Lock()
+
+def set_suc(x):
+	global suc, finger
+	suc = x
+	finger[0] = x - PORTA_NOS
 
 def getActive():
 	sockGerente = socket.socket()
@@ -58,10 +64,12 @@ def getActive():
 def create():
 	global pred, suc
 	pred = None
-	suc = PORT
+	set_suc(PORT)
 
 def closest_preceding_node(id):
-	return suc
+	global finger
+	for i in range(M -1, -1, -1):
+		if(inOpen())
 	
 #(a, b]
 def inClose(x, a, b):
@@ -112,7 +120,7 @@ def join():
 		other.send(b'\x05'+str(key).encode())
 		msg = other.recv(10)
 		other.close()
-		suc = PORTA_NOS + int(parse(msg))
+		set_suc(PORTA_NOS + int(parse(msg)))
 	print(key," joined suc = ", suc-PORTA_NOS)
 	#stabilize()
 	
@@ -142,7 +150,7 @@ def stabilize():
 		x = int(parse(msg))
 			
 	if(inOpen(x, key, suc - PORTA_NOS)):
-		suc = PORTA_NOS + x
+		set_suc(PORTA_NOS + x)
 	
 	if(suc == PORT):
 		notify(key)
@@ -173,7 +181,7 @@ def fix_sucessor():
 	global suc
 	id = find_sucessor(key)
 	#print(key, " fix sucessor = ", id)
-	suc = id + PORTA_NOS
+	set_suc(id + PORTA_NOS)
 	
 	
 def periodically():
@@ -227,7 +235,7 @@ def get_value(other):
 		 other_node.send(b'\x09')
 		 msg = other_node.recv(10)
 		 other_node.close()
-		 other_value = int(parse(msg))
+		 other_value = parse(msg)
 		 return other_value
 def set_value(other, x):
 	global value
@@ -342,9 +350,9 @@ def parse(msg):
 		with lock:
 			#print("\t", key, "new suc: ", new_suc)
 			if(suc != new_suc):
-				suc = new_suc
+				set_suc(new_suc)
 			else:
-				suc = PORT
+				set_suc(PORT)
 			print("\t\t", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
 	#predecessor saiu
 	elif msg[0] == 0x66:
@@ -380,8 +388,8 @@ def debugFunc():
 stabilizeTread = threading.Thread(target = periodically, args=())
 stabilizeTread.start()
 
-#debugTread = threading.Thread(target = debugFunc, args=())
-#debugTread.start()
+debugTread = threading.Thread(target = debugFunc, args=())
+debugTread.start()
 
 while True:
 	rlist, wlist, xlist = select([sock], [], [])
