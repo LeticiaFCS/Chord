@@ -25,7 +25,7 @@ inputList = [stdin, sockGerente]
 def comandos():
 	print("Comandos:")
 	print("\tsolicitar X - solicita o valor do nó de chave X")
-	print("\tMudar X V- muda o valor do nó de chave X para V")
+	print("\tmudar X V- muda o valor do nó de chave X para V")
 	print("\tsair - fecha o programa")
 	
 def init():

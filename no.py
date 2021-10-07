@@ -328,9 +328,10 @@ def parse(msg):
 	#cliente solicita valor	
 	elif msg[0] == 0x12:
 		chave = int.from_bytes(msg[1:], 'big')%N
+		print("Chave: ", msg[1:].decode()," nó: ", chave)
 		chave_sucessor = find_sucessor(chave)
 		porta = PORTA_NOS + chave_sucessor
-		print("chave de busca ",chave," sucessor ", chave_sucessor)
+		
 		if(get_id(porta) == chave):
 			return b'\x14' + str(get_value(porta)).encode()
 		else:
@@ -338,11 +339,12 @@ def parse(msg):
 	#cliente muda valor	
 	elif msg[0] == 0x15:
 		chave, novo_valor = msg[1:].split(b'\x16')
+		print("Chave: ", chave.decode(), end = "")
 		chave = int.from_bytes(chave, 'big')%N
+		print(" nó: ", chave)
 		novo_valor = novo_valor.decode()
 		chave_sucessor = find_sucessor(chave)
 		porta = PORTA_NOS + chave_sucessor
-		print("chave de busca ",chave," sucessor ", chave_sucessor)
 		if(get_id(porta) == chave):
 			set_value(porta, novo_valor)
 			return b'\x17'

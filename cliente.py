@@ -57,7 +57,7 @@ def solicitar(chave, port):
 	sock_no.connect((HOST_NO, port))
 	sock_no.send(b'\x12' + chave.encode())
 	msg = sock_no.recv(1024)
-	print("Cliente recebeu", msg, "do no", port)
+
 	d = parse(msg)
 	if d:
 		print("o valor do no de chave ", chave," e ", d.decode())
@@ -70,7 +70,7 @@ def mudar_valor(chave, valor, port):
 	sock_no.connect((HOST_NO, port))
 	sock_no.send(b'\x15' + chave.encode() + b'\x16' + valor.encode())
 	msg = sock_no.recv(1024)
-	print("Cliente recebeu", msg, "do no", port)
+
 	
 	
 	d = parse(msg)
