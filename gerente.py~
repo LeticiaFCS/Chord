@@ -32,10 +32,11 @@ sock.setblocking(False)
 inputList = [sys.stdin, sock]
 ids = []
 
-N = 5
+N = 8
 if(len(sys.argv) > 1):
 	N = int(sys.argv[1])
 
+#o número de nó é a maior potencia de 2 que é pelo menos N
 N = 1 << N.bit_length()
 
 chord = []
@@ -46,18 +47,26 @@ def query(no_port):
 	no_socket.connect((HOST, no_port))
 	return no_socket
 
+def comandos():
+	print("Comandos:")
+	print("\tlistar - lista as portas dos nós ativos")
+	print("\tMudar ID- muda o valor do nó ID ( 0 <= ID < N )")
+	print("\tsair - fecha o programa")
 def init():
 	for i in range(N):
 		no_port = PORT_NO_PREF + i
-		args = 'python3 no.py ' + str(no_port) + ' ' + str(i) + ' ' + str(N)
+		args = 'exec python3 no.py ' + str(no_port) + ' ' + str(i) + ' ' + str(N)
 		proc = subprocess.Popen([args], shell=True)
 		chord.append((proc, None, no_port))
 		
-	print("Chord criado!")
+	print("Chord criado! Aguarde a inicializacao")
 	
 	time.sleep(SLEEP_SOCKET_DELTA)
 	change_state(0)
 	print("Chord inicializado!")
+	
+	comandos()
+	
 
 def getActive():
 	for proc in chord:
@@ -107,7 +116,6 @@ def parse(msg):
 			return b'\x62'
 
 def new_connection(cnnSocket, id):
-	#print("new connection")
 	while True:
 		msg = cnnSocket.recv(1024)
         # se o cliente desconectou
@@ -160,8 +168,10 @@ def main():
 						
 						else:
 							print("comando invalido")
+							comandos()
 					except Exception:
 						print("comando invalido")
+						comandos()
 	
 					
 main()

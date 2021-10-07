@@ -22,6 +22,16 @@ sockGerente.connect((HOST_GERENTE, PORTA_GERENTE))
 
 inputList = [stdin, sockGerente]
 
+def comandos():
+	print("Comandos:")
+	print("\tsolicitar X - solicita o valor do nó de chave X")
+	print("\tMudar X V- muda o valor do nó de chave X para V")
+	print("\tsair - fecha o programa")
+	
+def init():
+	print("Bem vindo ao Chord!")
+	comandos()
+
 def parse(msg):
 	#recebeu porta de um no ativo
 	if msg[0] == 0x61:
@@ -70,7 +80,7 @@ def mudar_valor(chave, valor, port):
 		print("o valor do no de chave ", chave," nao foi mudado")
 	sock_no.close()
 
-print("Bem vindo ao Chord!")
+init()
 while True:
 	#select em espera para sock ou entrada padrão
 	rlist, wlist, xlist = select(inputList, [], [])
@@ -96,3 +106,9 @@ while True:
 				port = getActive()
 				if port != -1:
 					mudar_valor(chave, valor, port)
+					
+			else:
+				print("comando invalido")
+				comandos()
+					
+					

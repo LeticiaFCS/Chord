@@ -24,6 +24,8 @@ if(len(sys.argv) <= 3):
 	exit()
 
 PORT = int(sys.argv[1])
+
+#atributos do nó
 key = int(sys.argv[2])
 N = int(sys.argv[3])
 M = math.ceil( math.log(N, 2) )
@@ -34,7 +36,7 @@ ids = []
 pred = None
 suc = PORT
 
-STABILIZE_DELTA = 1
+STABILIZE_DELTA = 0.1
 
 sock = socket.socket()
 sock.bind((HOST, PORT))
@@ -57,10 +59,8 @@ def getActive():
 	sockGerente.close()
 	d = parse(msg)
 	if d:
-		print("\t",key, " pegou ativo ", int(d.decode()))
 		return int(d.decode())
-	
-	print("\t",key, " não pegou ativo ")
+
 	return -1
 
 
@@ -115,7 +115,7 @@ def find_sucessor(other_key):
 		return int(parse(msg))
 	
 def join():
-	global suc, key, PORTA_NOS
+	global suc, key, PORTA_NOS, active
 	node_in_chord = getActive()
 	active = True
 	if(node_in_chord == -1):
@@ -127,7 +127,7 @@ def join():
 		msg = other.recv(10)
 		other.close()
 		set_suc(PORTA_NOS + int(parse(msg)))
-	print(key," joined suc = ", suc-PORTA_NOS)
+	print(key," entrou no Chord ")
 	#stabilize()
 	
 	
@@ -139,9 +139,7 @@ def notify(other_key):
 
 def stabilize():
 	global suc
-	#print(PORT-PORTA_NOS, " chamou stabilize ")
-	#print("\tSTABILIZE ", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
-	
+
 	if(suc == PORT):
 		if(pred == None):
 			x = -1
@@ -195,6 +193,7 @@ def fix_fingers():
 	
 	
 def periodically():
+	show = 0
 	while(True):	
 		time.sleep(STABILIZE_DELTA)			
 		with lock:
@@ -206,15 +205,18 @@ def periodically():
 		with lock:
 			if(active):
 				fix_fingers()
-	
+		with lock:
+			if(active and show == 0):
+				showTable()
+		show = (show + 1) % 50
 
 def departure():
-	#print("\tdepature")
+
 	if(pred != None):
 		pred_no = socket.socket()
 		pred_no.connect((HOST, pred))
 		pred_no.send( b'\x65'+str(suc).encode())
-	#	print("\tdepature pred ",pred)
+
 		pred_no.close()
 	if(suc != PORT):
 		suc_no = socket.socket()
@@ -223,9 +225,9 @@ def departure():
 			suc_no.send( b'\x66'+"-1".encode())
 		else:
 			suc_no.send( b'\x66'+str(pred).encode())
-	#	print("\tdepature suc")
+
 		suc_no.close()
-	print(key," departed ")
+	print(key,"  saiu do Chord ")
 	
 def get_id(other):
 	if(other == PORT):
@@ -306,7 +308,7 @@ def parse(msg):
 	elif msg[0] == 0x11:
 		with lock:
 			value = msg[1:].decode()
-		print("MUDAMOS O VALOR DE ", key, " PARA ", msg[1:].decode())
+
 	#notify
 	elif msg[0] == 0x04:
 		id = int(msg[1:].decode())
@@ -356,27 +358,22 @@ def parse(msg):
 			with lock:
 				join()	
 				
-		#return b'\x20' if active else b'\x21'
 	#sucessor saiu
 	elif msg[0] == 0x65:
 		new_suc = int(msg[1:].decode())
 		with lock:
-			#print("\t", key, "new suc: ", new_suc)
 			if(suc != new_suc):
 				set_suc(new_suc)
 			else:
 				set_suc(PORT)
-			print("\t\t", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
 	#predecessor saiu
 	elif msg[0] == 0x66:
 		new_pred = int(msg[1:].decode())
 		with lock:
-			#print("\t", key, "new pred: ", new_pred)
 			if(new_pred != -1):
 				pred = new_pred
 			else:
 				pred = None
-			print("\t\t", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
 	return None
 
 
@@ -392,21 +389,17 @@ def no_connection(cnnSocket, id, end):
 
 	cnnSocket.close()
 
-def debugFunc():
-	while(True):
-		if(active):
-			time.sleep(5)
-			with lock:
-				print("\t", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
-				for i in range(M):
-					print(" ", finger[i], end = "--")
-				print("\n")
+def showTable():
+	print("\tid:", key," pred: ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc: ", suc-PORTA_NOS)
+	print("", end = "\t\t")
+	for i in range(M):
+		print(" ", finger[i], end = " --")
+	print("\n")
 
 stabilizeTread = threading.Thread(target = periodically, args=())
 stabilizeTread.start()
 
-debugTread = threading.Thread(target = debugFunc, args=())
-debugTread.start()
+
 
 while True:
 	rlist, wlist, xlist = select([sock], [], [])
