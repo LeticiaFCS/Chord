@@ -18,6 +18,7 @@ HOST = '' # maquina onde esta o servidor
 HOST_GERENTE = 'localhost'
 PORTA_GERENTE = int(env['PORTA_GERENTE'])
 PORTA_NOS = int(env['PORTA_NOS'])
+SHOW_FINGER_TABLE = False
 
 if(len(sys.argv) <= 3):
 	print("./no.py porta chave total_de_nos")
@@ -206,7 +207,7 @@ def periodically():
 			if(active):
 				fix_fingers()
 		with lock:
-			if(active and show == 0):
+			if(active and show == 0 and SHOW_FINGER_TABLE):
 				showTable()
 		show = (show + 1) % 50
 
@@ -339,7 +340,7 @@ def parse(msg):
 	#cliente muda valor	
 	elif msg[0] == 0x15:
 		chave, novo_valor = msg[1:].split(b'\x16')
-		print("Chave: ", chave, end = "")
+		print("Chave: ", chave.decode(), end = "")
 		chave = int.from_bytes(chave, 'big')%N
 		print(" nó: ", chave)
 		novo_valor = novo_valor.decode()

@@ -27,6 +27,7 @@ sock.listen(60)
 #torna o socket não bloqueante
 sock.setblocking(False)
 
+SHOW_FINGER_TABLE = False
 
 
 inputList = [sys.stdin, sock]
