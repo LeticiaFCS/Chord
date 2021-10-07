@@ -69,7 +69,9 @@ def create():
 def closest_preceding_node(id):
 	global finger
 	for i in range(M -1, -1, -1):
-		if(inOpen())
+		if(inOpen(finger[i], key, id)):
+			return finger[i]
+	return key
 	
 #(a, b]
 def inClose(x, a, b):

@@ -102,10 +102,10 @@ def find_sucessor(other_key):
 	#id in (n, ]
 	if(inClose(other_key, key, suc_key)):
 		return suc_key
-	else:	
+	else:
+		pred = PORTA_NOS + closest_preceding_node(other_key)
 		suc_node = socket.socket()
-		#print(key, " SUCESSOR ", suc)
-		suc_node.connect((HOST, suc))
+		suc_node.connect((HOST, pred))
 		suc_node.send(b'\x05'+str(other_key).encode())
 		msg = suc_node.recv(10)
 		suc_node.close()
