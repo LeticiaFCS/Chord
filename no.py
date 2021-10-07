@@ -179,11 +179,15 @@ def check_predecessor():
 			return
 		pred = None
 
-def fix_sucessor():
-	global suc
-	id = find_sucessor(key)
-	#print(key, " fix sucessor = ", id)
-	set_suc(id + PORTA_NOS)
+next = 0
+def fix_fingers():
+	global finger, next
+	next = (next + 1) % M
+	id = find_sucessor( (key + (1<<next))%M )
+	if(next == 0):
+		set_suc(PORTA_NOS + id)
+	else:
+		finger[next] = id
 	
 	
 def periodically():
@@ -195,7 +199,10 @@ def periodically():
 		with lock:
 			if(active):
 				check_predecessor()
-		#fix_sucessor()		
+		with lock:
+			if(active):
+				fix_fingers()
+	
 
 def departure():
 	#print("\tdepature")
@@ -385,7 +392,11 @@ def debugFunc():
 	while(True):
 		if(active):
 			time.sleep(1)
-			print("\t", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
+			with lock:
+				print("\t", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
+				for i in range(M):
+					print(" ", finger[i], end = "--")
+				print("\n")
 
 stabilizeTread = threading.Thread(target = periodically, args=())
 stabilizeTread.start()

@@ -50,7 +50,7 @@ def solicitar(chave, port):
 	print("Cliente recebeu", msg, "do no", port)
 	d = parse(msg)
 	if d:
-		print("o valor do no de chave ", chave," e ", int(d.decode()))
+		print("o valor do no de chave ", chave," e ", d.decode())
 	else:
 		print("O no de chave ", chave," esta inativo")
 	sock_no.close()
@@ -70,6 +70,7 @@ def mudar_valor(chave, valor, port):
 		print("o valor do no de chave ", chave," nao foi mudado")
 	sock_no.close()
 
+print("Bem vindo ao Chord!")
 while True:
 	#select em espera para sock ou entrada padrão
 	rlist, wlist, xlist = select(inputList, [], [])
