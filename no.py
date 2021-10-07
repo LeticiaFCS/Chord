@@ -38,7 +38,7 @@ STABILIZE_DELTA = 1
 
 sock = socket.socket()
 sock.bind((HOST, PORT))
-sock.listen(20)
+sock.listen(50)
 sock.setblocking(False)
 
 lock = threading.Lock()
@@ -57,7 +57,10 @@ def getActive():
 	sockGerente.close()
 	d = parse(msg)
 	if d:
+		print("\t",key, " pegou ativo ", int(d.decode()))
 		return int(d.decode())
+	
+	print("\t",key, " não pegou ativo ")
 	return -1
 
 
@@ -114,6 +117,7 @@ def find_sucessor(other_key):
 def join():
 	global suc, key, PORTA_NOS
 	node_in_chord = getActive()
+	active = True
 	if(node_in_chord == -1):
 		create()
 	else:
@@ -183,7 +187,7 @@ next = 0
 def fix_fingers():
 	global finger, next
 	next = (next + 1) % M
-	id = find_sucessor( (key + (1<<next))%M )
+	id = find_sucessor( (key + (1<<next))%N )
 	if(next == 0):
 		set_suc(PORTA_NOS + id)
 	else:
@@ -351,7 +355,7 @@ def parse(msg):
 		else:
 			with lock:
 				join()	
-				active = True
+				
 		#return b'\x20' if active else b'\x21'
 	#sucessor saiu
 	elif msg[0] == 0x65:
@@ -391,7 +395,7 @@ def no_connection(cnnSocket, id, end):
 def debugFunc():
 	while(True):
 		if(active):
-			time.sleep(1)
+			time.sleep(5)
 			with lock:
 				print("\t", key," pred ", (pred if pred else PORTA_NOS-1)-PORTA_NOS, " suc ", suc-PORTA_NOS)
 				for i in range(M):
