@@ -4,6 +4,7 @@ import sys
 import time
 import subprocess
 import threading
+import signal
 
 def dotenv(path: str) -> dict:
     with open(path, 'r') as f:
@@ -102,9 +103,10 @@ def change_state(id):
 	sock_cnn.close()
 
 
-def closeAll():
+def closeAll(sig, frame):
 	for proc in chord:
 		proc[0].terminate()
+	sys.exit()
 
 def parse(msg):
 	#cliente solicita um no ativo
@@ -127,6 +129,12 @@ def new_connection(cnnSocket, id):
 			cnnSocket.send(d)
 
 	cnnSocket.close()
+
+#funções auxiliares para fechar o programa sem digitar sair
+signal.signal(signal.SIGINT, closeAll)
+signal.signal(signal.SIGTSTP, closeAll)
+signal.signal(signal.SIGTERM, closeAll)
+
 
 def main():
 	initThread = threading.Thread(target = init, args=())
@@ -153,9 +161,9 @@ def main():
 						client.join()
 					initThread.join()
 					# fecha o socket principal
-					closeAll()
-					sock.close() 
-					sys.exit()
+					sock.close()
+					closeAll(None, None)					 
+					
 				elif(cmd == "listar"):
 					listActive()
 				else:
